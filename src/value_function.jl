@@ -1,8 +1,8 @@
 using Distributions, Expectations, Random, Plots, LinearAlgebra
 Random.seed!(42)
 
-# import utils 
-include("utils.jl")
+# # import utils 
+# include("utils.jl")
 
 # TODO as of Oct 24: 
 # 1. DONE: Remove sigma from receiver, make sample matrix instead of vector

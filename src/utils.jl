@@ -3,6 +3,7 @@ abstract type AbstractLearningRule end
 struct EmpiricalLearningRule <: AbstractLearningRule
     # No parameters needed for empirical
 end
+
 function (rule::EmpiricalLearningRule)(
     sample::Matrix{Int},   # row is message, column is state, value is count observed in sample 
     m::Int,                # message received
