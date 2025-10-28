@@ -1,7 +1,7 @@
 module FrequentistPersuasion
 
 # external deps 
-using Distributions, Random, LinearAlgebra
+using Distributions, LinearAlgebra
 
 # internal files 
 include("utils.jl")
