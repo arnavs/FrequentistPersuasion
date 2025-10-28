@@ -1,4 +1,4 @@
-using Distributions, Expectations, Random, Plots, LinearAlgebra
+using Distributions, Random, LinearAlgebra
 Random.seed!(42)
 
 # # import utils 
