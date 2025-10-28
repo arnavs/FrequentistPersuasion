@@ -27,4 +27,5 @@ end
     σ = [1 0; 0.25 0.75] # mixed strategy 
     K = 3 
     V = value_function(sender, receiver, σ, 3)
+    @test V ≈ 0.4074074074074074
 end 
