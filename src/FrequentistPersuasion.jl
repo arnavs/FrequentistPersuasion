@@ -1,7 +1,7 @@
 module FrequentistPersuasion
 
 # external deps 
-using Distributions, LinearAlgebra
+using Distributions, LinearAlgebra, Optimization, OptimizationOptimJL, ForwardDiff
 
 # internal files 
 include("utils.jl")
@@ -11,5 +11,6 @@ include("value_function.jl")
 export AbstractLearningRule, EmpiricalLearningRule
 export Sender, Receiver, br
 export value_function
+
 
 end 

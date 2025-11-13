@@ -1,35 +1,46 @@
+using ForwardDiff
+
 # value function  
 function value_function(
-    sender::Sender,
+    sender::Sender, 
     receiver::Receiver,
-    σ::Matrix{Float64}, # Signal rule
+    σ::AbstractMatrix{T}, # Signal rule, rows: states, cols: messages 
     K::Int
-)
+) where {T}
     mu_0 = sender.mu_0 
     U_sender = sender.U 
-    U_receiver = receiver.U 
-    M, N = size(σ) # num messages, num states
+    # U_receiver = receiver.U 
+    N, M = size(σ) # num states, num messages
 
     # All possible samples for K draws over N states 
     # multinomial distribution over sample, which is now a matrix (rows: messages, cols: states)
     # Build the joint probability matrix
-    P = σ .* reshape(mu_0, 1, N)  # (M×N) with P[m,θ] = mu_0[θ] * σ[m,θ] = mu_0[θ] * P(m|θ)
+    P = σ .* reshape(mu_0, N, 1)  # (N×M) with P[θ,m] = mu_0[θ] * σ[θ,m] = mu_0[θ] * P(m|θ)
+    P = vec(ForwardDiff.value.(P)) # take value if P contains Dual numbers for forward diff 
+    # Ensure valid probability distribution 
+    P = max.(P, 0.0) 
+    P = P ./ sum(P)
 
-    sample_dist = Multinomial(K, vec(P)) # multinomial distribution for K trials with joint probability vector P
-    possible_samples = samples_matrix(K, M, N)
+    sample_dist = Multinomial(K, P) # multinomial distribution for K trials with joint probability vector P
+    possible_samples = samples_matrix(K, N, M)
     expected_val = 0.0
+    # @show σ
 
     for sample_matrix in possible_samples
         # Get probability of each sample 
         sample_vec = vec(sample_matrix) # flatten to vector for pdf calculation
         prob_sample = pdf(sample_dist, sample_vec) # Probability of this sample under the multinomial dist
-        # @show sample_matrix, prob_sample
+        # if prob_sample > 0.0
+        #     @show sample_matrix, prob_sample
+        # end
+
 
         # Compute sender's expected payoff given this sample
-        vals = zeros(Float64, N)
+        vals = zeros(T, N)
 
         for state in 1:N
-            msgs_in_state = σ[:, state]
+            msgs_in_state = σ[state, :]
+            @show msgs_in_state 
             # If sigma deterministic (only 1 non-zero entry per col)
             # m = findfirst(x -> x==1.0, msgs_in_state) # Message assigned by signal rule based on true state 
             # best_response = br(receiver, sender, sample_matrix, m, mu_0) # Receiver's best action given sample and message (and the belief it formed)
@@ -43,13 +54,17 @@ function value_function(
                     continue
                 end
                 best_response = br(receiver, sender, sample_matrix, m, mu_0) # Receiver's best action given sample and message (and the belief it formed)
-                expected_over_msgs += prob_m_given_state * U_sender[best_response, state]
+                # expected_over_msgs += prob_m_given_state * U_sender[best_response, state]
+                expected_over_msgs += prob_m_given_state * U_sender[state, best_response]
+                
             end
             vals[state] = expected_over_msgs
         end
         val_weighed_by_prior = dot(mu_0, vals)
+        # @show vals, val_weighed_by_prior, prob_sample * val_weighed_by_prior
         expected_val += prob_sample * val_weighed_by_prior 
     end
 
     return expected_val 
 end
+
