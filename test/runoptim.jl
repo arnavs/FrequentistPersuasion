@@ -4,14 +4,14 @@ using FrequentistPersuasion, Test, Random, LinearAlgebra, Optimization, Optimiza
 # Include the optimization file
 include("../optim.jl")
 
-# Set up the prosecutor-judge game
+# prosecutor-judge game
 U_S = [1 1; 0 0]  # Sender payoff: states × actions
 U_R = [1 0; 0 1]  # Receiver payoff: states × actions
 learning_rule = EmpiricalLearningRule()
 mu_0 = [1/3, 2/3]  # Prior over states
 sender = Sender(U_S, mu_0)
 receiver = Receiver(U_R, learning_rule)
-K = 3  # Number of samples
+K = 3  # num samples
 
 # Test with a specific signal rule first
 println("=" ^ 60)
@@ -24,7 +24,7 @@ println()
 V = value_function(sender, receiver, σ, K)
 println("Value: $V")
 
-# Now optimize
+# Optimize
 println("\n" * "=" ^ 60)
 println("Optimizing signal rule:")
 println("=" ^ 60)

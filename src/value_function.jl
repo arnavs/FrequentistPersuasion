@@ -1,5 +1,3 @@
-using ForwardDiff
-
 # value function  
 function value_function(
     sender::Sender, 
@@ -15,8 +13,8 @@ function value_function(
     # All possible samples for K draws over N states 
     # multinomial distribution over sample, which is now a matrix (rows: messages, cols: states)
     # Build the joint probability matrix
-    P = σ .* reshape(mu_0, N, 1)  # (N×M) with P[θ,m] = mu_0[θ] * σ[θ,m] = mu_0[θ] * P(m|θ)
-    P = vec(ForwardDiff.value.(P)) # take value if P contains Dual numbers for forward diff 
+    P = σ .* mu_0  # (N×M) with P[θ,m] = mu_0[θ] * σ[θ,m] = mu_0[θ] * P(m|θ)
+    P = vec(P) # take value if P contains Dual numbers for forward diff 
     # Ensure valid probability distribution 
     P = max.(P, 0.0) 
     P = P ./ sum(P)

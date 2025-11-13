@@ -1,20 +1,16 @@
-using Optimization, OptimizationOptimJL
+using Optimization, OptimizationOptimJL, DifferentiationInterface
 
 """
 Objective function for optimization. Takes a flattened signal rule matrix and model parameters.
 
-# Arguments
-- `x::Vector{Float64}`: Flattened signal rule matrix σ (length N*M)
-- `model::NamedTuple`: Contains (sender, receiver, K, N, M)
-
-# Returns
+# Output 
 - Negative of the sender's expected value (we minimize, so negate to maximize)
 
 # Notes
 - σ states on rows, messages on columns
 - x is flattened in column-major order (Julia default)
 """
-function objective(x, model)
+function objective(x::Vector{Float64}, model::NamedTuple)
     sender, receiver, K, N, M = model.sender, model.receiver, model.K, model.N, model.M
     
     # Reshape flattened vector back to matrix (N states × M messages) (column-major)
@@ -29,22 +25,17 @@ end
 
 
 """
-    optimize_sigma(sender::Sender, receiver::Receiver, K::Int; 
-                   initial_sigma::Union{Nothing, Matrix{Float64}}=nothing,
-                   algorithm=Optimization.LBFGS())
-
 Finds the optimal signal rule σ that maximizes the sender's expected payoff.
 
-# Returns
+# Output
 - `σ_opt::Matrix{Float64}`: Optimal signal rule (N×M, row-stochastic)
 - `V_opt::Float64`: Optimal sender payoff
 
-# Signal Rule Constraints
+# Signal Rule constraints so that each row forms a probability distribution 
 The signal rule σ must be row-stochastic:
 1. All elements are non-negative: σ[θ,m] ≥ 0
 2. Each row sums to 1: Σₘ σ[θ,m] = 1 for all states θ
 
-This means for each state θ, σ[θ,:] forms a probability distribution over messages.
 """
 function optimize_sigma(
     sender::Sender, 
@@ -60,9 +51,9 @@ function optimize_sigma(
     M = size(sender.U, 2)             # Number of messages (= number of actions)
     
     println("Problem dimensions:")
-    println("  N (states) = $N")
-    println("  M (messages) = $M")
-    println("  K (samples) = $K")
+    println("\tN (states) = $N")
+    println("\tM (messages) = $M")
+    println("\tK (samples) = $K")
 
     # ========================================
     # Initial guess
@@ -94,7 +85,7 @@ function optimize_sigma(
     for θ in 1:N
         # For state θ, we want to sum over all messages m
         # In flattened vector x, element σ[θ,m] is at index: (m-1)*N + θ
-        # (because reshape uses column-major ordering)
+        # because reshape uses column-major ordering
         for m in 1:M
             idx = (m - 1) * N + θ  # Index in flattened vector
             A[θ, idx] = 1.0
@@ -118,7 +109,7 @@ function optimize_sigma(
         M = M
     )
     # Use forward autodiff 
-    optf = OptimizationFunction(objective, Optimization.AutoForwardDiff())
+    optf = OptimizationFunction(objective, DifferentiationInterface.AutoSimpleFiniteDiff())
     prob = OptimizationProblem(
         optf,           # Objective function
         x0,             # Initial guess
