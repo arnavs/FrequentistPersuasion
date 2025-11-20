@@ -1,5 +1,9 @@
 # Learning rules 
 abstract type AbstractLearningRule end 
+"""
+    EmpiricalLearningRule()
+    Receiver forms beliefs based on empirical frequency of messages in the sample 
+"""
 struct EmpiricalLearningRule <: AbstractLearningRule
     # No parameters needed for empirical
 end
@@ -31,6 +35,40 @@ function (rule::EmpiricalLearningRule)(
         belief_prob_dist[state_idx] = states_with_msg[i] / states_with_msg_count
     end
 
+    return belief_prob_dist
+end
+
+"""
+    NadarayaWatsonLearningRule()
+    Kernel regression based learning rule  
+"""
+struct NadarayaWatsonLearningRule{} <: AbstractLearningRule
+    kernel::Function # Takes in distance (Float64), outputs weight (Float64)
+    bandwidth::Float64
+end
+function (rule::NadarayaWatsonLearningRule)(
+    sample::Matrix{Int},   # row is state, column is message, value is count observed in sample 
+    m::Int,                # message received
+    mu_0::Vector{Float64}, # prior over states. Index is state, value is prior prob
+)
+    N, M = size(sample)
+    belief_prob_dist_numerator = zeros(Float64, N)
+    belief_prob_dist_denominator = 0.0
+
+    # Iterate through states 
+    for state in 1:N 
+        for msg in 1:M
+            msg_state_count = sample[state, msg]
+            msg_distance = abs(msg - m)
+            weight = rule.kernel(msg_distance / rule.bandwidth)
+            numerator_to_add = msg_state_count * weight 
+            belief_prob_dist_numerator[state] += numerator_to_add
+            belief_prob_dist_denominator += numerator_to_add
+        end 
+    end 
+
+    belief_prob_dist = belief_prob_dist_numerator ./ belief_prob_dist_denominator
+    
     return belief_prob_dist
 end
 

@@ -1,4 +1,4 @@
-using Optimization, OptimizationOptimJL, DifferentiationInterface
+using Optimization, OptimizationOptimJL, DifferentiationInterface, OptimizationNLopt
 
 """
 Objective function for optimization. Takes a flattened signal rule matrix and model parameters.
@@ -14,7 +14,11 @@ function objective(x::Vector{Float64}, model::NamedTuple)
     sender, receiver, K, N, M = model.sender, model.receiver, model.K, model.N, model.M
     
     # Reshape flattened vector back to matrix (N states × M messages) (column-major)
-    σ = reshape(x, N, M)
+    Z = reshape(x, N, M)
+
+    # Row-wise softmax to ensure row-stochastic (each row sums to 1)
+    σ = exp.(Z)
+    σ = σ ./ sum(σ, dims=2)   # row-wise softmax
     
     # Sender's expected payoff
     val = value_function(sender, receiver, σ, K)
@@ -42,7 +46,7 @@ function optimize_sigma(
     receiver::Receiver, 
     K::Int;
     initial_sigma::Union{Nothing, Matrix{Float64}}=nothing,
-    algorithm=LBFGS()
+    algorithm=NelderMead()
 )  
     
     # ========================================
@@ -63,22 +67,27 @@ function optimize_sigma(
     else
         σ_init = initial_sigma
     end
-    
-    # Flatten to vector for optimizer (column-major order)
+
+    # Flatten 
     x0 = vec(σ_init)  # N*M
-    println("\nInitial guess: uniform distribution (each state sends each message with prob 1/$M)")
     
     # ========================================
     # Box constraints (bounds)
     # All elements in [0, 1] because they are probabilities
-    lb = zeros(Float64, N * M)   
-    ub = ones(Float64, N * M)    
+    lb = zeros(Float64, N*M)   
+    ub = ones(Float64, N*M)    
     println("\nBox constraints: 0 ≤ σ[θ,m] ≤ 1 for all (θ,m)")
     
     # ========================================
     # Row-stochastic constraints
     # For each state θ: Σₘ σ[θ,m] = 1
-    # Represent as linear equality constraint: A*vec(σ) = b where b = ones(N)
+    # Represent as linear equality constraint: σ*v = b where b = v = ones(N)
+
+    # v = ones(Float64, M) 
+    # b = ones(Float64, N)
+    # # Create linear equality constraint: σ*v = b
+    # lcon = b
+    # ucon = b
     A = zeros(Float64, N, N * M) # Constraint matrix A (N rows × N*M columns)
     b = ones(Float64, N)
     
@@ -92,7 +101,6 @@ function optimize_sigma(
         end
     end
 
-    # Create linear equality constraint: A*vec(σ) = b
     lcon = b
     ucon = b
 
@@ -106,10 +114,15 @@ function optimize_sigma(
         receiver = receiver,
         K = K,
         N = N,
-        M = M
+        M = M,
+        A = A,
     )
     # Use forward autodiff 
-    optf = OptimizationFunction(objective, DifferentiationInterface.AutoSimpleFiniteDiff())
+    optf = OptimizationFunction(
+        objective, 
+        Optimization.AutoFiniteDiff(),
+        # cons = (x, p) -> p.A * x  # Constraint function A*vec(σ)
+    )
     prob = OptimizationProblem(
         optf,           # Objective function
         x0,             # Initial guess
@@ -119,6 +132,7 @@ function optimize_sigma(
         lcons = lcon,   # Lower bounds on constraints
         ucons = ucon    # Upper bounds on constraints 
     )
+    
     
     println("\nOptimization problem created with:")
     println("\tVariables: $(N*M)")
@@ -134,7 +148,6 @@ function optimize_sigma(
     println("\tConverged: $(sol.retcode)")
     println("\tObjective value (negative): $(sol.objective)")
     
-    # Reshape solution back to matrix 
     σ_opt = reshape(sol.u, N, M)
     
     # Flip sign to get actual value 

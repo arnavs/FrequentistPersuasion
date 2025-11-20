@@ -1,14 +1,12 @@
 using Revise 
 using FrequentistPersuasion, Test, Random, LinearAlgebra, Optimization, OptimizationOptimJL
 
-# Include the optimization file
-include("../optim.jl")
 
 # prosecutor-judge game
-U_S = [1 1; 0 0]  # Sender payoff: states × actions
-U_R = [1 0; 0 1]  # Receiver payoff: states × actions
+U_S = [1 1 1; 1 0 0; 0 1 1]  # Sender payoff: states × actions
+U_R = [1 0 0; 0 1 1; 1 0 0]  # Receiver payoff: states × actions
 learning_rule = EmpiricalLearningRule()
-mu_0 = [1/3, 2/3]  # Prior over states
+mu_0 = [1/3, 1/3, 1/3]  # Prior over states
 sender = Sender(U_S, mu_0)
 receiver = Receiver(U_R, learning_rule)
 K = 3  # num samples
@@ -17,7 +15,7 @@ K = 3  # num samples
 println("=" ^ 60)
 println("Testing value function with a specific σ:")
 println("=" ^ 60)
-σ = [1.0 0.0; 0.25 0.75]  # Row-stochastic: rows sum to 1
+σ = [0.5 0.25 0.25; 0.25 0.5 0.25; 0.25 0.25 0.5]  # Row-stochastic: rows sum to 1
 println("Signal rule σ (states × messages):")
 display(σ)
 println()
