@@ -17,8 +17,10 @@ function objective(x::Vector{Float64}, model::NamedTuple)
     Z = reshape(x, N, M)
 
     # Row-wise softmax to ensure row-stochastic (each row sums to 1)
-    σ = exp.(Z)
-    σ = σ ./ sum(σ, dims=2)   # row-wise softmax
+    # Remove exp
+    # σ = exp.(Z)
+
+    σ = Z ./ sum(Z, dims=2)   # row-wise softmax
     
     # Sender's expected payoff
     val = value_function(sender, receiver, σ, K)
@@ -117,7 +119,7 @@ function optimize_sigma(
         M = M,
         A = A,
     )
-    # Use forward autodiff 
+    # Use finite autodiff 
     optf = OptimizationFunction(
         objective, 
         Optimization.AutoFiniteDiff(),
@@ -129,8 +131,8 @@ function optimize_sigma(
         model;          # Parameters passed to objective
         lb = lb,        # Lower bounds on variables
         ub = ub,        # Upper bounds on variables
-        lcons = lcon,   # Lower bounds on constraints
-        ucons = ucon    # Upper bounds on constraints 
+        # lcons = lcon,   # Lower bounds on constraints
+        # ucons = ucon    # Upper bounds on constraints 
     )
     
     
@@ -149,6 +151,7 @@ function optimize_sigma(
     println("\tObjective value (negative): $(sol.objective)")
     
     σ_opt = reshape(sol.u, N, M)
+    σ_opt ./= sum(σ_opt, dims=2)
     
     # Flip sign to get actual value 
     V_opt = -sol.objective
