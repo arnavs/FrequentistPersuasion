@@ -38,7 +38,7 @@ function value_function(
 
         for state in 1:N
             msgs_in_state = σ[state, :]
-            @show msgs_in_state 
+            # @show msgs_in_state 
             # If sigma deterministic (only 1 non-zero entry per col)
             # m = findfirst(x -> x==1.0, msgs_in_state) # Message assigned by signal rule based on true state 
             # best_response = br(receiver, sender, sample_matrix, m, mu_0) # Receiver's best action given sample and message (and the belief it formed)
